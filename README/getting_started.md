@@ -13,15 +13,15 @@
 
 **必须使用 `onCreateView()` 的callback来定义layout组件**
 
-#### Add a Fragment to an Activity using XML
+### Add a Fragment to an Activity using XML
 `FragmentActivity` 是用来支持 API level 11 以下的版本，如果版本在 11 及以上，则可以使用普通的Activity.
 
 可以通过在 xml 文件中指定`Fragment`的`name`属性，从而指定特定的Fragment class.
 
-### Building a Flexible UI
+## Building a Flexible UI
 `FragmentManager` 类提供添加、移除、替换fragment的方法，给用户动态的适配体验。
 
-#### Add a Fragment to an Activity at Runtime
+### Add a Fragment to an Activity at Runtime
 使用`FragmentManager` 创建一个 `FragmentTransaction`。
 
 在Activity运行时添加Fragment有一点需要注意：Activity必须包含一个你可以插入 fragment 的 View.
@@ -30,7 +30,7 @@
 * Create a `FragmentTransaction`: `beginTransaction()`
 * Add a `Fragment`: `add()`
 
-#### Replace One Fragment with Another
+### Replace One Fragment with Another
 使用 `replace()` 代替 `add()`.
 
 Best Practice：在进行Fragment替换时，最好允许用户返回或者取消操作：`addToBackStack()`（在 `FragmentTransaction.commit()` 之前，Fragment 将不会被销毁，只会被remove掉）.
@@ -41,10 +41,10 @@ Best Practice：在进行Fragment替换时，最好允许用户返回或者取�
 ### Define an Interface
 在 Fragment 中定义一个 interface，在 Activity 中实现这个 interface。Fragment 将会在 `onAttach()` 中通过得到 Activity 对象捕获这个实现，从而通过 Activity 来进行信息交流。
 
-#### Implement the Interface
+### Implement the Interface
 Activity 需要实现 Fragment 中声明的 interface.
 
-#### Deliver a Message to a Fragment
+### Deliver a Message to a Fragment
 Activity 可以通过 `findFragmentById()` 获取到 Fragment 实例，直接调用 Fragment 的方法。
 
 **场景：AFragment 有一堆文章列表，点击某个文章，进入 BFragment，阅读这篇文章。**
@@ -53,36 +53,36 @@ Activity 可以通过 `findFragmentById()` 获取到 Fragment 实例，直接调
 2. Activity: click(title) {title -> content -> replaceToBFragment(content) -> BFragment.updateArticleView(content)}
 3. BFragment: updateArticleView(content)
 
-## Saving Data
+# Saving Data
 在 Android 中，有三种数据存储方式：
 
 * shared preferences 文件：key-value
 * 文件系统：任何文件
 * SQLite: 数据库
 
-### Saving Key-Value Sets
+## Saving Key-Value Sets
 一个 `SharedPreferences` 对象指向一个包含`key-value`的文件，提供简单的方法进行读写。
 
-#### Get a Handle to a SharedPreferences
+### Get a Handle to a SharedPreferences
 创建或获取一个 shared preference 文件：
 
 * `getSharedPreferences()`：拥有多个shared preference文件，通过传入文件名获取对象，可以从任意的`context`中获取。
 * `getPreferences()`：如果一个activity只有一个shared preference文件，通过这个方法可以获取activity对应的SP文件
 
-#### Write to Shared Preferences
+### Write to Shared Preferences
 1. 创建 `SharedPreferences.Editor`：调用 SharedPreferences 对象的 `edit()` 方法
 2. 写入键值对：`putInt()`, `putString`, .etc
 3. 保存更改：`commit()`
 
-#### Read from Shared Preferences
+### Read from Shared Preferences
 `getInt()`, `getString`, .etc.
 
-### Saving Files
+## Saving Files
 使用 `File` API 来操作 Android 中的文件系统。
 
 一个`File`对象适合读写大数据文件，从头到尾没有中断的顺序读取。
 
-#### Choose Internal or External Storage
+### Choose Internal or External Storage
 所有的Android设备拥有两个文件存储域：“internal” 和 “external”：
 
 * Internal Storage
@@ -98,18 +98,18 @@ App 会被默认载入到internal中，在代码中如何设置下载位置？
 
 - 在AndroidManifest中：更改`android:installLocation`
 
-#### Obtain Permissions for External Storage
+### Obtain Permissions for External Storage
 在external写文件：需要权限 `android.permission.WRITE_EXTERNAL_STORAGE`
 
 在external写文件（in future）：需要权限：`android.permission.READ_EXTERNAL_STORAGE`
 
-#### Save a File on Internal Storage
+### Save a File on Internal Storage
 * `getFilesDir()`：返回app在internal中的位置
 * `getCacheDir()`: 返回app在internal中保存cache的位置，一定要在不需要的时候及时删掉
 * 写文件：`FileOutputStream fos = openFileOutput(filename, file_mode);`
 * 创建cache文件：`File file = File.createTempFile(filename, null, context.getCacheDir());`
 
-#### Save a File on External Storage
+### Save a File on External Storage
 由于external文件有很多不在场的不确定因素，所以在访问文件前最好验证其可用性：
 `getExternalStorageState()` 获取external storage状态：如果返回`MEDIA_MOUNTED`，则可用。
 
@@ -117,19 +117,19 @@ App 会被默认载入到internal中，在代码中如何设置下载位置？
 * Private Files: 需要删除 -> create from -> `getExternalFilesDir()`
 * 文件类型：`DIRECTORY_PICTURES`, `DIRECTORY_MUSIC`, `DIRECTORY_RINGTONES`, .etc
 
-#### Query Free Space
+### Query Free Space
 * `getFreeSpace()`
 * `getTotalSpace()`
 
-#### Delete a File
+### Delete a File
 * `file.delete()`
 * `context.deleteFile(filename)`
 
-### Saving Data in SQL Databases
-#### Define a Schema and Contract
+## Saving Data in SQL Databases
+### Define a Schema and Contract
 在 Contract 类中通过实现`BaseColumns`内部类，可以获得内部key`_ID`。
 
-#### Create a Database Using a SQL Helper
+### Create a Database Using a SQL Helper
 `SQLiteOpenHelper` 用来提供仅在的需要时候可长时间运行的操作（添加/更新数据库），避免在项目运行时就实例化数据库操作类。
 
 * `getWritableDatabase()`：获取可写的database
@@ -139,10 +139,10 @@ App 会被默认载入到internal中，在代码中如何设置下载位置？
 
 继承`SQLiteOpenHelper`，需要重写`onCreate()`, `onUpgrade()`, `onOpen()`, (可选)`onDowngrade()`.
 
-#### Put Information into a Database
+### Put Information into a Database
 Insert: `Database` -> `ContentValues` -> `db.insert(table_name, action_if_content_values_empty, content_values)`
 
-#### Read Information from a Database
+### Read Information from a Database
 Read: `Database` -> `db.query(table_name, columns_to_return, column_where, column_where_value, group, filter, sort_order)`
 
 Return: `Cursor` -> cursor starts at position -1.
@@ -151,15 +151,136 @@ Return: `Cursor` -> cursor starts at position -1.
 * `getColumnIndex()/getColumnIndexOrThrow()`: 获取当前 position
 * `close()`: 关闭游标
 
-#### Delete Information from Database
+### Delete Information from Database
 Delete: `Database` -> `db.delete(table_name, selection, selection_args)`
 
-#### Update a Database
+### Update a Database
 Update: combine `insert()` & `delete()` -> `db.update(table_name, content_values, selection, selection_args)`
 
-#### Persisting Database Connection
+### Persisting Database Connection
 一般在`Activity`被摧毁时关闭`DBHelper` -> `dbHelper.close()`
 
+# Interacting with Other Apps
+## Sending the User to Another App
+在与其它的App进行交互时，只能使用implicit intent。
 
+### Build an Implicit Intent
+定义`Action`去具体化启动事件。
+* 使用`Uri`定义启动事件：
+** 打开拨号页面
+
+`Uri number = Uri.parse("tel:5551234");
+Intent callIntent = new Intent(Intent.ACTION_DIAL, number);`
+
+** 打开地图页面
+
+`Uri location = Uri.parse("geo:0,0?q=1600+Amphitheatre+Parkway,+Mountain+View,+California");
+Intent mapIntent = new Intent(Intent.ACTION_VIEW, location);`
+
+** 打开网页
+
+`Uri webpage = Uri.parse("http://www.android.com");
+Intent webIntent = new Intent(Intent.ACTION_VIEW, webpage);`
+
+* 使用 extra data 具体化启动事件：
+** `setType()`: 指定MIME(Multipurpose Internet Mail Extensions) Type
+** 发送 email
+
+    Intent emailIntent = new Intent(Intent.ACTION_SEND);
+    emailIntent.setType(HTTP.PLAIN_TEXT_TYPE);
+    emailIntent.putExtra(Intent.EXTRA_EMAIL, new String[] {"jon@example.com"});
+    emailIntent.putExtra(Intent.EXTRA_SUBJECT, "Email subject");
+    emailIntent.putExtra(Intent.EXTAR_TEXT, "Email message text");
+    emailIntent.putExtra(Intent.EXTRA_STREAM, Uri.parse("content://path/to/email/attachment"));
+
+** 发送 calendar 事件
+    
+    Intent calendarIntent = new Intent(Intent.ACTION_INSERT, Events.CONTENT_URI);
+    Calendar beginTime = Calendar.getInstance().set(2012, 0, 19, 7, 30);
+    Calendar endTime = Calendar.getInstance().set(2012, 0, 19, 10, 30);
+    calendarIntent.putExrea(CalendarContract.EXTRA_EVENT_BEGIN_TIME, beginTime.getTimeInMillis());
+    calendarIntent.putExtra(CalendarContract.EXTRA_EVENT_END_TIME, endTime.getTimeInMillis());
+    calendarIntent.putExtra(Events.TITLE, "Ninja class");
+    calendarIntent.putExtra(Events.EVENT_LOCATION, "Secret dojo);
+
+### Verify There is an App to Receive the Intent
+如果intent声明的唤起事件并不存在，app将会crash。
+
+* `quertIntentActivities()`: 查看可用事件
+
+    PackageManager packageManager = getPackageManager();
+    List activities = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
+    boolean isIntentSafe = activities.size() > 0;
+
+### Start an Activity with the Intent
+`startActivity(intent)`
+
+### Show an App Chooser
+如果有多个唤起事件存在，需要用户自行选择具体的唤起事件，调用`createChooser()`来调起具体的被选事件。
+
+    Intent intent = new Intent(Intent.ACTION_SEND);
+    String title = getResources().getString(R.string.choose_title);
+    Intent chooser = Intent.createChooser(intent, title);
+    if (intent.resolveActivity(getPackageManager()) != null) {
+        startActivity(chooser);
+    }
+
+## Getting a Result from an Activity
+
+使用`startActivityForResult()`来启动一个activity并接收返回数据。
+使用`onActivityResult()`来处理返回的数据
+
+### Start the Activity
+
+    static final int PICK_CONTACT_REQUEST = 1;
+    private void pickContact() {
+        Intent pickContactIntent = new Intent(Intent.ACTION_PICK, Uri.parse("content://contacts"));
+        pickContactIntent.setType(Phone.CONTENT_TYPE);
+        startActivityForResult(pickContactIntent, PICK_CONTACT_REQUEST);
+    }
+
+### Receive the Result
+通过 `resultCode` 来判断返回类型：
+* RESULT_OK: 操作成功
+* RESULT_CANCELED: 操作取消
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == PICK_CONTACT_REQUEST) {
+            if (resultCode == RESULT_OK) {
+                //do something...    
+            }    
+        }    
+    }
+
+## Allowing Other Apps to Start Your Activity
+通过定义支持`ACTION_SEND`的intent：`<intent-filter>`.
+
+### Add an Intent Filter
+在`intent-filter`中定义以下几种criteria：
+* Action : action 名称，一般定义为`ACTION_XXX`格式
+* Data : 与 intent 相关的数据描述，可以多重定义：MIME Type / URI prefix / URI scheme / combination.
+* Category : 提供额外的方式描述处理intent的activity，通常与用户行为或地址相关。一般定义为`CATEGORY_DEFAULT`.
+
+    <activity android:name="ShareActivity"
+        <intent-filter>
+            <action android:name="android.intent.action.SEND" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <data android:mimeType="text/plain" />
+            <data android:mimeType="image/*" />
+        </intent-filter>
+    </activity>
+
+**必须定义 `CATEGORY_DEFAULT` 否则implicit intent 无法处理跳转事件.**
+
+### Handle the Intent in Your Activity
+调用`getIntent()`.
+在activity的生命周期的任何时间段都可以调用，但是最好在`onCreate() / onStart()`中处理。
+
+### Return a Result
+
+    Intent result = new Intent("com.example.RESULT_ACTION", Uri.parse("content://result_uri"));
+    setResult(Activity.RESULT_OK, result);
+    finish();
 
 
