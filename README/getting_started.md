@@ -86,17 +86,17 @@ Activity 可以通过 `findFragmentById()` 获取到 Fragment 实例，直接调
 所有的Android设备拥有两个文件存储域：“internal” 和 “external”：
 
 * Internal Storage
-** 永远可用
-** 文件只能被 App 访问
-** 当 App 被卸载时，所有存储的 internal 的文件都会被删除
+	* 永远可用
+	* 文件只能被 App 访问
+ 	* 当 App 被卸载时，所有存储的 internal 的文件都会被删除
 * External Storage
-** 不一定可用
-** 可被全局访问
-** 当 App 被卸载时，系统只会删除特定的文件夹（`getExternalFilesDir()`）
+	* 不一定可用
+	* 可被全局访问
+	* 当 App 被卸载时，系统只会删除特定的文件夹（`getExternalFilesDir()`）
 
 App 会被默认载入到internal中，在代码中如何设置下载位置？
 
-- 在AndroidManifest中：更改`android:installLocation`
+>在AndroidManifest中：更改`android:installLocation`
 
 ### Obtain Permissions for External Storage
 在external写文件：需要权限 `android.permission.WRITE_EXTERNAL_STORAGE`
@@ -166,51 +166,52 @@ Update: combine `insert()` & `delete()` -> `db.update(table_name, content_values
 
 ### Build an Implicit Intent
 定义`Action`去具体化启动事件。
+
 * 使用`Uri`定义启动事件：
-** 打开拨号页面
+	* 打开拨号页面
 
-`Uri number = Uri.parse("tel:5551234");
-Intent callIntent = new Intent(Intent.ACTION_DIAL, number);`
+			Uri number = Uri.parse("tel:5551234");
+			Intent callIntent = new Intent(Intent.ACTION_DIAL, number);
 
-** 打开地图页面
+	* 打开地图页面
 
-`Uri location = Uri.parse("geo:0,0?q=1600+Amphitheatre+Parkway,+Mountain+View,+California");
-Intent mapIntent = new Intent(Intent.ACTION_VIEW, location);`
+			Uri location = Uri.parse("geo:0,0?q=1600+Amphitheatre+Parkway,+Mountain+View,+California");
+			Intent mapIntent = new Intent(Intent.ACTION_VIEW, location);
 
-** 打开网页
+	* 打开网页
 
-`Uri webpage = Uri.parse("http://www.android.com");
-Intent webIntent = new Intent(Intent.ACTION_VIEW, webpage);`
+			Uri webpage = Uri.parse("http://www.android.com");
+			Intent webIntent = new Intent(Intent.ACTION_VIEW, webpage);
 
-* 使用 extra data 具体化启动事件：
-** `setType()`: 指定MIME(Multipurpose Internet Mail Extensions) Type
-** 发送 email
+	* 使用 extra data 具体化启动事件：
+	`setType()`: 指定MIME(Multipurpose Internet Mail Extensions) Type
+		* 发送 email
+	
+				Intent emailIntent = new Intent(Intent.ACTION_SEND);
+				emailIntent.setType(HTTP.PLAIN_TEXT_TYPE);
+			   	emailIntent.putExtra(Intent.EXTRA_EMAIL, new String[] {"jon@example.com"});
+			    emailIntent.putExtra(Intent.EXTRA_SUBJECT, "Email subject");
+    			emailIntent.putExtra(Intent.EXTAR_TEXT, "Email message text");
+    			emailIntent.putExtra(Intent.EXTRA_STREAM, Uri.parse("content://path/to/email/attachment"));
 
-    Intent emailIntent = new Intent(Intent.ACTION_SEND);
-    emailIntent.setType(HTTP.PLAIN_TEXT_TYPE);
-    emailIntent.putExtra(Intent.EXTRA_EMAIL, new String[] {"jon@example.com"});
-    emailIntent.putExtra(Intent.EXTRA_SUBJECT, "Email subject");
-    emailIntent.putExtra(Intent.EXTAR_TEXT, "Email message text");
-    emailIntent.putExtra(Intent.EXTRA_STREAM, Uri.parse("content://path/to/email/attachment"));
-
-** 发送 calendar 事件
+		* 发送 calendar 事件
     
-    Intent calendarIntent = new Intent(Intent.ACTION_INSERT, Events.CONTENT_URI);
-    Calendar beginTime = Calendar.getInstance().set(2012, 0, 19, 7, 30);
-    Calendar endTime = Calendar.getInstance().set(2012, 0, 19, 10, 30);
-    calendarIntent.putExrea(CalendarContract.EXTRA_EVENT_BEGIN_TIME, beginTime.getTimeInMillis());
-    calendarIntent.putExtra(CalendarContract.EXTRA_EVENT_END_TIME, endTime.getTimeInMillis());
-    calendarIntent.putExtra(Events.TITLE, "Ninja class");
-    calendarIntent.putExtra(Events.EVENT_LOCATION, "Secret dojo);
+   				Intent calendarIntent = new Intent(Intent.ACTION_INSERT, Events.CONTENT_URI);
+    			Calendar beginTime = Calendar.getInstance().set(2012, 0, 19, 7, 30);
+    			Calendar endTime = Calendar.getInstance().set(2012, 0, 19, 10, 30);
+    			calendarIntent.putExrea(CalendarContract.EXTRA_EVENT_BEGIN_TIME, beginTime.getTimeInMillis());
+   				calendarIntent.putExtra(CalendarContract.EXTRA_EVENT_END_TIME, endTime.getTimeInMillis());
+   				calendarIntent.putExtra(Events.TITLE, "Ninja class");
+    			calendarIntent.putExtra(Events.EVENT_LOCATION, "Secret dojo);
 
 ### Verify There is an App to Receive the Intent
 如果intent声明的唤起事件并不存在，app将会crash。
 
 * `quertIntentActivities()`: 查看可用事件
 
-    PackageManager packageManager = getPackageManager();
-    List activities = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
-    boolean isIntentSafe = activities.size() > 0;
+    	PackageManager packageManager = getPackageManager();
+    	List activities = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY);
+    	boolean isIntentSafe = activities.size() > 0;
 
 ### Start an Activity with the Intent
 `startActivity(intent)`
