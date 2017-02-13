@@ -127,4 +127,39 @@ App 会被默认载入到internal中，在代码中如何设置下载位置？
 
 ### Saving Data in SQL Databases
 #### Define a Schema and Contract
+在 Contract 类中通过实现`BaseColumns`内部类，可以获得内部key`_ID`。
+
+#### Create a Database Using a SQL Helper
+`SQLiteOpenHelper` 用来提供仅在的需要时候可长时间运行的操作（添加/更新数据库），避免在项目运行时就实例化数据库操作类。
+
+* `getWritableDatabase()`：获取可写的database
+* `getReadableDatabase()`：获取可读的database
+
+只可在非UI线程调用以上两种方法，例如`AsyncTask`和`IntentService`.
+
+继承`SQLiteOpenHelper`，需要重写`onCreate()`, `onUpgrade()`, `onOpen()`, (可选)`onDowngrade()`.
+
+#### Put Information into a Database
+Insert: `Database` -> `ContentValues` -> `db.insert(table_name, action_if_content_values_empty, content_values)`
+
+#### Read Information from a Database
+Read: `Database` -> `db.query(table_name, columns_to_return, column_where, column_where_value, group, filter, sort_order)`
+
+Return: `Cursor` -> cursor starts at position -1.
+* `moveToNext()`: position+1
+* `getXXX()`: 获取列值
+* `getColumnIndex()/getColumnIndexOrThrow()`: 获取当前 position
+* `close()`: 关闭游标
+
+#### Delete Information from Database
+Delete: `Database` -> `db.delete(table_name, selection, selection_args)`
+
+#### Update a Database
+Update: combine `insert()` & `delete()` -> `db.update(table_name, content_values, selection, selection_args)`
+
+#### Persisting Database Connection
+一般在`Activity`被摧毁时关闭`DBHelper` -> `dbHelper.close()`
+
+
+
 
