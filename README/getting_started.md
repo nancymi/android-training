@@ -284,4 +284,84 @@ Update: combine `insert()` & `delete()` -> `db.update(table_name, content_values
     setResult(Activity.RESULT_OK, result);
     finish();
 
+# Working with System Permissions
+为了保证App的数据安全，Android 在每一个有权限控制的沙箱中运行App。
 
+## Declaring Permissions
+### Determine What Permissions Your App Needs
+Android 5.1 以下，用户会在安装App的时候赋予权限，在Android 6.0 以上，用户会在App运行时动态赋予权限。
+
+### Add Permissions to the Manifest
+在`manifest`属性下，申请permission使用`uses-permission`标签。
+
+## Requesting Permissions at Run Time
+系统权限分为两种：normal 和 dangerous：
+
+* 系统会自动赋予 normal 权限
+* dangerous 权限需要用户手动授予
+
+在Android 6.0以上，由于权限是动态授予的，所以需要保证在某些权限不可用时，App依然可以正常运行。
+
+### Check for Permissions
+`ContextCompat.checkSelfPermissions()`
+
+    int permissionCheck = ContextCompat.checkSelfPermission(thisActivity, Manifest.permission.WRITE_CALENDAR);
+
+* `PackageManager.PERMISSION_GRANTED` = permissionCheck: 权限被授予
+* `PackageManager.PERMISSION_DENED` = permissionCheck: 权限被拒绝
+
+### Request Permissions
+最佳实践：在用户已经关闭权限时，App运行到需要使用权限才能正常运行的功能时，可以为用户提供权限解释。
+
+#### Explain why the app needs permissions
+`shouldShowRequestPermissionRationale()`: 如果App曾经请求过permission，用户拒绝了请求，该方法会返回`true`;
+如果App曾经请求过permission，用户拒绝了请求，且选择`Don't ask again`，该方法会返回`false`;
+如果设备安全等级拒绝授予该permission请求，该方法会返回`false`.
+
+#### Request the permissions you need
+`requestPermissions()` 用来请求权限。
+
+    if (ContextCompat.checkSelfPermission(thisActivity, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.shouldShowRequestPermissionRationale(thisActivity, Manifest.permission.READ_CONTACTS)) {
+            //Show an explanation    
+        } else {
+            ActivityCompat.requestPermissions(thisActivity, new String[]{Manifest.permission.READ_CONTACTS}, MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+        }    
+    }
+
+#### Handle the permissions request response
+`onRequestPermissionsResult()` override 该方法用来查询permission是否成功申请。
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_READ_CONTACTS: {
+                if (grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTE) {
+                    //Do what you want    
+                } else {
+                    //Do what when permission was denied    
+                }
+                return;
+            }    
+        }    
+    }
+
+## Permissions Usage Notes
+**权限控制准则**
+
+* Consider Using an Intent
+* Only Ask for Permissions You Need
+* Don't Overwhelm the User
+* Explain Why You Need Permissions
+* Test for Both Permissions Models
+
+使用 adb 工具管理权限：
+
+* 分组列出权限和状态
+
+    adb shell pm list permissions -d -g
+
+* 赋予/禁止一或多个权限
+
+    adb shell pm [grant|revoke] <permission-name> ...
