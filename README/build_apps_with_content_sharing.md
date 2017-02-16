@@ -63,6 +63,65 @@ MIME 类型match你共享的所有文件.
     startActivity(Intent.createChooser(shareIntent, "Share images to.."));
 
 ## Receiving Simple Data from Other Apps
+### Update Your Manifest
+Intent filters告诉系统App可以接受怎样的intent事件.
+
+    <activity android:name=".ui.MyActivity" >
+        <intent-filter>
+            <action android:name="android.intent.action.SEND" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <data android:mimeType="image/*" />
+        </intent-filter>
+        <intent-filter>
+            <action android:name="android.intent.action.SEND_MULTIPLE" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <data android:mimeType="image/*" />
+        </intent-filter>
+    </activity>
+
+### Handle the Incoming Content
+
+    void onCreate(Bundle savedInstanceState) {
+        Intent intent = getIntent();
+        String action = intent.getAction();
+        String type = intent.getType();
+
+        if (Intent.ACTION_SEND.equals(action) && type != null) {
+            if ("text/plain".equals(type)) {
+                handleSendText(intent);    
+            } else if (type.startsWith("image/")) {
+                handleSendImage(intent);    
+            }
+        } else if (Intent.ACTION_SEND_MULTIPLE.equals(action) && type != null) {
+            if (type.startsWith("image/")) {
+                handleSendMultipleImages(intent);    
+            } else {
+                //Handle other intents    
+            }   
+        }
+    }
+
+    void handleSendText(Intent intent) {
+        String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
+        if (sharedText != null) {
+            //Update UI    
+        }
+    }
+
+    void handleSendImage(Intent intent) {
+        Uri imageUri = (Uri) intent.getParcelbleExtra(Intent.EXTRA_STREAM);
+        if (imageUri != null) {
+            //Update    
+        }
+    }
+
+    void handleSendMultipleImages(Intent intent) {
+        ArrayList<Uri> imageUris = intent.getParcelbleArrayList(Intent.EXTRA_STREAM);
+        if (imageUris != null) {
+            //Update    
+        }
+    }
+
 ## Adding an Easy Share Action
 # Sharing Files
 # Sharing Files with NFC
