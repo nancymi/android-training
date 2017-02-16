@@ -123,5 +123,38 @@ Intent filters告诉系统App可以接受怎样的intent事件.
     }
 
 ## Adding an Easy Share Action
+使用 `ShareActionProvider` 在ActionBar上添加share action（> Android 4.0）.
+
+### Update Menu Declarations
+    
+    <menu xmlns:android="http://schemas.android.com/apk/res/android">
+        <item
+            android:id="@+id/menu_item_share"
+            android:showAsAction="isRoom"
+            android:title="Share"
+            android:actionProviderClass="android.widget.ShareActionProvider" />
+    </menu>
+
+### Set the Share Intent
+使用`ShareActionProvider`，必须为其提供一个intent，需要先调用`MenuItem.getActionProvider()`来取回`ShareActionProvider`实例，再调用`setShareIntent()`为其指定intent.
+
+    private ShareActionProvider shareActionProvider;
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.share_menu, menu);
+
+        MenuItem item = menu.findItem(R.id.menu_item_share);
+
+        shareActionProvider = (ShareActionProvider) item.getActionProvider();
+        return true;
+    }
+
+    private void setShareIntent(Intent shareIntent) {
+        if (shareActionProvider != null) {
+            shareActionProvider.setShareIntent(shareIntent);    
+        }    
+    }
+
 # Sharing Files
 # Sharing Files with NFC
