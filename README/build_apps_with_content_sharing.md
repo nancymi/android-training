@@ -157,4 +157,166 @@ Intent filters告诉系统App可以接受怎样的intent事件.
     }
 
 # Sharing Files
+共享文件：提供App文件的URI给接收方，并给予短暂的可读/可写权限.
+`FileProvider` => `getUriForFile()` => 生成文件的URI
+
+共享较小的text/numeric数据：发送包含数据的Intent.
+
+## Setting Up File Sharing
+`FileProvider` 是 `v4 Support Library` 的一部分.
+
+### Specify the FileProvider
+在配置文件中定义 `FileProvider`:
+
+    <application
+        ...>
+        <provider
+            android:name="android.support.v4.content.FileProvider"
+            android:authorities="com.example.myapp.fileprovider"
+            android:grantUriPermissions="true"
+            android:exported="false">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/filepaths" />
+        </provider>
+        ...
+    </application>
+
+
+* `android:authorities`: FileProvider 生成的content URIs
+
+### Specify Sharable Directories
+一旦在配置文件中添加了`FileProvider`，就需要指定一个目录来放置你想共享的文件：
+
+在res/xml中创建`filepaths.xml`. 
+
+    <paths>
+        <files-path path="images/" name="myimages" />
+    </paths>
+
+
+* `files-path`
+* `external-path`: share directories in external storage
+* `cache-path`: share directories in internal storage
+
+所有准备工作做完以后，`FileProvider`会生成固定格式的访问URI:
+`content://com.example.myapp.fileprovider/myimages/<filename>`
+
+## Sharing a File
+从server app提供文件选择接口，以便让其他app可以唤起.
+
+### Receive File Requests
+如果收到文件访问请求，你的app应该提供一个文件选择`Activity`. 请求方通过调用 `startActivityForResult()` （包含`ACTION_PICK`的Intent）启动该Activity.
+
+### Create a File Selection Activity
+<intent-filter>
+
+* action: `ACTION_PICK`
+* category: `CATEGORY_DEFAULT` & `CATEGORY_OPENABLE`
+* data: mimeType
+
+#### Define the file selection Activity in code
+定义Activity来展示你的app中`files/images`的文件，并允许用户点击想要的文件.
+
+    public class MainActivity extends Activity {
+        private File mPrivareRootDir;
+        private File mImagesDir;
+        File[] mImageFiles;
+        String[] mImageFilenames;
+
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+            mResultIntent = new Intent("com.example.myapp.ACTION_RETURN_FILE");
+            mPrivateRootDir = getFilesDir();
+            mImagesDir = new File(mPrivateRootDir, "images");
+            mImageFiles = mImageDir.listFiles();
+            setResult(Activity.RESULT_CANCELED, null);
+        }
+    }
+
+### Respond to a File Selection
+如果用户选择了文件，你的app必须考虑为选中的文件提供URI.
+
+因为Android 6.0以上只支持运行时授予权限，所以需要避免使用`Uri.fromFile()`:
+
+* 不支持文件共享
+* 你的app需要获得`WRITE_EXTERNAL_STORAGE`权限(ANDROID 4.4 及以下)
+* 接收文件的app需要有`READ_EXTERNAL_STORAGE` 权限
+
+`onItemClick()` => `File` Object => call `getUriFromFile()`.
+
+        protected void onCreate(Bundle savedInstanceState) {
+            mFileListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> adapterView,
+                            View view,
+                            int position,
+                            long rowId) {
+                    File requestFile = new File(mImageFilename[position]);
+                    try {
+                        fileUri = FileProvider.getUriForFile(
+                                MainActivity.this,
+                                "com.example.myapp.fileprovider",
+                                requestFile);    
+                    } catch (IllegalArgumentException e) {
+                        Log.e("File Selector", 
+                                "The selected file can't be shared: " + 
+                                clickedFileName);    
+                    }
+                }
+            });    
+        }
+
+### Grant Permissions for the File
+通过给 Intent 设置permission flags赋予读取文件的权限.
+
+    protected void onCreate(Bundle savedInstanceState) {
+        mFileListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView,
+                    View view,
+                    int position,
+                    long rowId) {
+                ...
+                if (fileUri != null) {
+                    mResultIntent.addFlags(
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION);    
+                }    
+            }
+        });    
+    }
+
+避免使用`Context.grantUriPermission()`：只能使用`Context.revokeUriPermission()`收回权限
+
+### Share the File with the Requesting App
+`setResult`
+
+    protected void onCreate(Bundle savedInstanceState) {
+        ...
+        mFileListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView,
+                    View view,
+                    int position,
+                    long rowId) {
+                ...
+                if (fileUri != null) {
+                    ...
+                    mResultIntent.setDataAndType(
+                        fileUri,
+                        getContentResolver().getType(fileUri));
+                    MainActivity.this.setResult(Activity.RESULT_OK,
+                        mResultIntent);
+                } else {
+                    mResultIntent.setDataAndType(null, "");
+                    MainActivity.this.setResult(Activity.RESULT_CANCELED,
+                        mResultIntent);
+                }
+            }
+        });
+    }
+
+## Requesting a Shared File
+## Retrieving File Information
+
 # Sharing Files with NFC
