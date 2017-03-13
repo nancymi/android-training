@@ -385,16 +385,15 @@ override `onActivityResult()` 来处理接收文件，一旦客户端app有了�
 * `DISPLAY_NAME`: 文件名称，和`File.getName()`返回的数据一致
 * `SIZE`: 文件大小(long)，和`File.length()`返回的数据一致
 
-   
-    Uri returnUri = returnIntent.getData();
-    Cursor returnCursor = getContentResolver().query(returnUri, null, null, null, null);
-    int nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-    int sizeIndex = returnCursor.getColumnIndex(OpenableColumns.SIZE);
-    returnCursor.moveToFirst();
-    TextView nameView = (TextView) findViewById(R.id.filename_Text);
-    TextView sizeView = (TextView) findViewById(R.id.filesize_text);
-    nameView.setText(returnCursor.getString(nameIndex));
-    sizeView.setText(returnCursor.getString(sizeIndex));
+		Uri returnUri = returnIntent.getData();
+    	Cursor returnCursor = getContentResolver().query(returnUri, null, null, null, null);
+    	int nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+    	int sizeIndex = returnCursor.getColumnIndex(OpenableColumns.SIZE);
+    	returnCursor.moveToFirst();
+    	TextView nameView = (TextView) findViewById(R.id.filename_Text);
+    	TextView sizeView = (TextView) findViewById(R.id.filesize_text);
+    	nameView.setText(returnCursor.getString(nameIndex));
+    	sizeView.setText(returnCursor.getString(sizeIndex));
 
 # Sharing Files with NFC
 使用Android Beam(Android 自己的一个app，仅支持Android 4.0以上) 文件传输功能传输较大的文件.
