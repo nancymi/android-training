@@ -385,6 +385,7 @@ override `onActivityResult()` 来处理接收文件，一旦客户端app有了�
 * `DISPLAY_NAME`: 文件名称，和`File.getName()`返回的数据一致
 * `SIZE`: 文件大小(long)，和`File.length()`返回的数据一致
 
+   
     Uri returnUri = returnIntent.getData();
     Cursor returnCursor = getContentResolver().query(returnUri, null, null, null, null);
     int nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
