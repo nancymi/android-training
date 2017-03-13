@@ -317,6 +317,274 @@ Intent filters告诉系统App可以接受怎样的intent事件.
     }
 
 ## Requesting a Shared File
+
+### Send a Request for the File
+从server app请求文件数据的方式一般为：`startActivityForResult()` + `Intent`(包含`action`、`MIME type`).
+
+    public class MainActivity extends Activity {
+        private Intent mRequestFileIntent;
+        private ParcelFileDescriptor mInputPFD;
+        ...
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+            super.onCreate(savedInstanceState);
+            setContentView(R.layout.activity_main);
+            mRequestFileIntent = new Intent(Intent.ACTION_PICK);
+            mRequestFileIntent.setType("image/jpg");
+            ...
+        }
+        ...
+        protected void requestFile() {
+            /**
+             * When the user requests a file, send an Intent to the server app files.
+            **/    
+            startActivityForResult(mRequestFileIntent, 0);
+            ...
+        }
+        ...
+    }
+
+### Access the Requested File
+override `onActivityResult()` 来处理接收文件，一旦客户端app有了文件的content URI，可以通过获取其`FileDescriptor`来处理文件。
+
+只有在server app赋予了访问权限，client app获取到文件访问入口，文件才可被处理。由于权限是临时的，所以一旦client app的任务栈结束，文件不再可被外部访问。
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent returnIntent) {
+        if (resultCode != RESULT_OK) {
+            return;    
+        } else {
+            Uri returnUri = returnIntent.getData();
+            try {
+                mInputPFD = getContentResolver().openFileDescriptor(returnUri, "r");    
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+                Log.e("MainActivity", "File not found.");
+                return;
+            }
+
+            FileDescriptor fd = mInputPFD.getFileDescriptor();
+            ...
+        }
+    }
+
 ## Retrieving File Information
+使用`FileProvider`来获取文件的类型和大小。
+
+### Retrieve a File's MIME Type
+调用`ContentResolver.getType()`获取文件的数据类型（MIME）。一般地，`FileProvider`定义文件的MIME类型为其文件后缀。
+
+    Uri returnUri = returnIntent.getData();
+    String mimeType = getContentResolver().getType(returnUri);
+
+### Retrieve a File's Name and Size
+`FileProvider` 有默认的`query()`实现：返回一个`Cursor`对象，用来查询含有文件名称和大小的content URI.
+
+默认的实现中有两列：
+
+* `DISPLAY_NAME`: 文件名称，和`File.getName()`返回的数据一致
+* `SIZE`: 文件大小(long)，和`File.length()`返回的数据一致
+
+    Uri returnUri = returnIntent.getData();
+    Cursor returnCursor = getContentResolver().query(returnUri, null, null, null, null);
+    int nameIndex = returnCursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+    int sizeIndex = returnCursor.getColumnIndex(OpenableColumns.SIZE);
+    returnCursor.moveToFirst();
+    TextView nameView = (TextView) findViewById(R.id.filename_Text);
+    TextView sizeView = (TextView) findViewById(R.id.filesize_text);
+    nameView.setText(returnCursor.getString(nameIndex));
+    sizeView.setText(returnCursor.getString(sizeIndex));
 
 # Sharing Files with NFC
+使用Android Beam(Android 自己的一个app，仅支持Android 4.0以上) 文件传输功能传输较大的文件.
+
+虽然Android Beam 传输API处理大量的数据，但是Android 4.0中引入的Android Beam NDFF 传输API只能处理少量数据.
+
+## Sending Files to Another Device
+使用Android Beam传输大型文件. 完成功能之前，需要申请使用NFC和外部存储的权限，测试你的设备是否支持NFC，提供URI给Android Beam文件传输.
+
+Android Beam文件传输功能有以下需求：
+
+* Android 4.1 以上
+* 传输文件必须在外部存储中
+* 所传输的文件必须是全局可读的. => 调用`File.setReadable(true, false)`来设置
+* 必须提供文件的URI. Android Beam 文件传输不能处理通过`FileProvider.getUriForFile`生成的URI
+
+### Declare Features in the Manifest
+#### Request Permissions
+
+* NFC: `<uses-permission android:name="android.permission.NFC" />`
+* READ_EXTERNAL_STORAGE: `<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />`
+
+#### Specify the NFC feature
+在`<manifest>`下添加`<uses-feature>`标签，并设置`android:required="true"` => 声明如果没有NFC，app将无法工作.
+
+    <uses-feature
+        android:name="android.hardware.nfc"
+        android:required="true" />
+
+### Test for Android Beam File Transfer Support
+如果没有NFC，你的app也可以工作，则设置`required="false"`.
+
+测试是否支持Android Beam文件传输：`PackageManager.hasSystemFeature(FEATURE_NFC)`，然后检查Android版本是否在4.1以上.
+
+如果支持：获取NFC控制器的实例(和NFC硬件进行交互).
+
+    public class MainActivity extends Activity {
+        NfcAdapter mNfcAdapter;
+
+        boolean mAndroidBeamAvailable = false;
+
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+            if (!PackageManager.hasSystemFeature(PackageManager.FEATURE_NFC)) {
+                //Disable NFC feature
+            } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN_MR1) {
+                mAndroidBeamAvailable = false;    
+            } else {
+                mNfcAdapter = NfcAdapter.getDefaultAdapter(this);    
+            }
+        }
+    }
+
+### Create a Callback Method that Provides Files
+Android Beam文件传输检测到用户想要给其他的NFC设备传输文件时，系统调用自定义的callback. 在这个callback方法中，返回一个Uri对象数组. Android Beam文件传输将这些文件传输给接收方.
+
+实现`NfcAdapter.CreateBeamUrisCallback` 接口以及其方法`createBeamUris()`.
+
+    public class MainActivity extends Activity {
+        private Uri[] mFileUris = new Uri[10];
+
+        private class FileUriCallback implements NfcAdapter.CreateBeamUrisCallback {
+            public FileUriCallback() {} 
+
+            @Override
+            public Uri[] createBeamUri(NfcEvent event) {
+                return mFileUris;    
+            }
+        }
+    }
+
+实现以后，通过`setBeamPushUrisCallback()`激活该callback.
+
+    public class MainActivity extends Activity {
+        private FileUriCallback mFileUriCallback;
+
+        @Override
+        protected void onCreate(Bundle savedInstanceState) {
+            mNfcAdapter = NfcAdapter.getDefaultAdapter(this);
+            mFileUriCallback = new FileUriCallback();
+            mNfcAdapter.setBeamPushUrisCallback(mFileUriCallback, this);
+        }
+    }
+
+>你也可以直接提供一组uri给NfcAdapter：`NfcAdapter.setBeamPushUris()`
+
+### Specify the Files to Send
+
+    private Uri[] mFileUris = new Uri[10];
+    String transferFile = "transferimage.jpg";
+    File extDir = getExternalFileDir(null);
+    File requestFile = new File(extDir, transferFile);
+    requestFile.setReadable(true, false);
+    fileUri = Uri.fromFile(requestFile);
+    if (fileUri != null) {
+        mFileUris[0] = fileUri;    
+    } else {
+        Log.e("My Activity", "No File URI available for file.");    
+    }
+
+## Receiving Files from Another Device
+使用Android Media Scanner查看文件，使用`MediaStore`provider为媒体文件添加内容.
+
+### Respond to a Request to Display Data
+当Android Beam文件传输完毕，会发送一个包含`ACTION_VIEW`和MIME Type的Intent.
+接收者需要定义`<intent-filter>`来接收对应的唤起事件:
+
+* `<action android:name="android.intent.action.VIEW" />`
+* `<category android:name="android.intent.category.CATEGORY_DEFAULT" />`
+* `<data android:mimeType="mime-type" />`
+
+**示例**
+
+    <activity
+        android:name="com.example.android.nfctransfer.ViewActivity"
+        android:label="Android Beam Viewer" >
+        ...
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            ...
+        </intent-filter>
+    </activity>
+
+### Request File Permissions
+权限申请：
+
+* 读：`<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />`
+* 写：`<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />`
+
+### Get the Directory for Copied Files
+Android Beam一次性传输多个文件，传输结束调用Intent的URI指向第一个文件. 然而，你的app可能也会接收到来自其他文件传输的intent(`ACTION_VIEW`). 为了处理接收时间，你需要检查其scheme和authority.
+
+    public class MainActivity extends Activity {
+        private File mParentPath;
+        private Intent mIntent;
+
+        private void handleViewIntent() {
+            mIntent = getIntent();
+            String action = mIntent.getAction();
+
+            if (TextUtils.equals(action, Intent.ACTION_VIEW)) {
+                Uri beamUri = mIntent.getData();
+                if (TextUtils.equals(beamUri.getScheme(), "file") {
+                    mParentPath = handleFileUri(beamUri);    
+                } else if (TextUtils.equals(beamUri.getScheme(), "content")) {
+                    mParentPath = handleContentUri(beamUri);
+                }
+            }
+        }
+    }
+
+#### Get the directory from a file URI
+如果接收到的intent包含文件的URI，该URI包含文件的绝对路径和文件名称.
+
+    public String handleFileUri(Uri beamUri) {
+        String fileName = beamUri.getPath();
+        File copiedFile = new File(fileName);
+        return copiedFile.getParent();
+    }
+
+#### Get the directory from a content URI
+如果接收到的intent包含内容的URI，该URI指向存储在`MediaStore`的内容提供者（指向文件夹和文件名称）.你可以通过测试URI的认证值来检测`MediaStore`的content URI.
+
+你也可以通过接收`ACTION_VIEW`intent，包含content URI（除MediaStore之外的content provider）.这种情况下，content URI不包含MediaStore权限值，并且content URI通常不指向目录。
+
+#### Determine the content provider
+调用`Uri.getAuthority()`获取URI的认证级别:
+
+* `MediaStore.AUTHORITY`: 该URI用于由MediaStore追踪的一个或多个文件.从MediaStore检索完整的文件名，并从文件名获取目录.
+* Any other authority value: 来自其他content provider的content URI. 只可以显示该文件，不能获取文件目录.
+
+为了获取MediaStore的content URI，通过过滤条件：收到的content URI(Uri)和`MediaColumns.DATA`(projection)查找对应的目标.返回的`Cursor`对象包含所有的传输文件的完整路径和文件名称. 
+
+    public String handleContentUri(Uri beamUri) {
+        int filenameIndex;
+        File copiedFile;
+        String fileName;
+
+        if (!TextUtils.equals(beamUri.getAuthority(), MediaStore.AUTHORITY) {
+            //other content provider    
+        } else {
+            String[] projection = { MediaStore.MediaColumns.DATA };
+            Cursor pathCursor = getContentResolver().query(beamUri, projection, null, null, null);
+            if (pathCursor != null && pathCursor.moveToFirst()) {
+                filenameIndex = pathCursor.getColumnIndex(MediaStore.MediaColumns.DATA);
+                fileName = pathCursor.getString(filenameIndex);
+                copiedFile = new File(fileName);
+                return new File(copiedFile.getParent());
+            }
+        } else {
+            return null;    
+        }
+    }
