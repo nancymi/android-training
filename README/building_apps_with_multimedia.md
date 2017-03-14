@@ -76,13 +76,12 @@ Android请求其他app来完成一个action通常会使用`Intent`.
             File photoFile = null;
             try {
                 photoFile = createImageFile();    
-            } catch (IOException ex) {
-                if (photoFile != null) {
-                    Uri photoURI = FileProvider.getUriForFile(this, 
+            } catch (IOException ex) {}
+           if (photoFile != null) {            
+                Uri photoURI = FileProvider.getUriForFile(this, 
                         "com.example.android.fileprovider", photoFile);
-                    takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
-                    startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
-                }    
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI);
+                startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);    
             }
         }
     }
@@ -151,6 +150,38 @@ Android请求其他app来完成一个action通常会使用`Intent`.
     }
 
 ## Recording Videos Simply
+使用已有的相机应用录制音频.
+
+### Request Camera Permission
+在 manifest 文件中使用`<uses-feature>`标签.
+    
+    <manifest ... >
+        <uses-feature android:name="android.hardware.camera"
+                      android:required="true" />
+    </manifest>
+
+### Record a Video with a Camera App
+
+    static final int REQUEST_VIDEO_CAPTURE = 1;
+
+    private void dispatchTakeVideoIntent() {
+        Intent takeVideoIntent = new Intent(MediaStore.ACTION_VIDEO_CAPTURE);
+        if (takeVideoIntent.resolveActivity(getPackageManager()) != null) {
+            startActivityForResult(takeVideoIntent, REQUEST_VIDEO_CAPTURE);    
+        }
+    }
+
+### View the Video
+在`onActivityResult()`中Android相机应用将会返回视频的Uri.
+    
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        if (requestCode == REQUEST_VIDEO_CAPTURE && resultCode == RESULT_OK) {
+            Uri videoUri = intent.getData();
+            mVideoView.setVideoURI(videoUri);
+        }    
+    }
+
 ## Controlling the Camera
 # Printing Content
 ## Photos
