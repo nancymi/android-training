@@ -1,4 +1,5 @@
 >创建实现用户期望行为的富媒体应用
+
 # Capturing Photos
 ## Taking Photos Simply
 ### Taking Photos Simply
