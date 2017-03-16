@@ -183,6 +183,136 @@ Android请求其他app来完成一个action通常会使用`Intent`.
     }
 
 ## Controlling the Camera
+### Open the Camera Object
+1. 获取`Camera`对象的一个实例，推荐在`onCreate()`时创建.
+2. 在`onResume()`方法中打开camera
+
+如果在调用`Camera.open()`时相机正在被使用，会抛出一个异常.
+
+    Private boolean safeCameraOpen(int id) {
+        boolean qOpened = false;
+
+        try {
+            releaseCameraAndPreview();
+            mCamera = Camera.open(id);
+            qOpened = (mCamera != null);
+        } catch (Exception e) {
+            Log.e(getString(R.string.app_name), "failed to open Camera");
+            e.printStackTrace();
+        }
+        return qOpened;
+    }
+
+    private void releaseCameraAndPreview() {
+        mPreview.setCamera(null);
+        if (mCamera != null) {
+            mCamera.release();
+            mCamera = null;
+        }
+    }
+
+在API 9 及以上，camera framework 开始支持多个相机. 如果你调用`open()`不携带任何参数，你将会获取到后置摄像头的`Camera`对象.
+
+### Create the Camera Preview
+使用`SurfaceView`显示相机传感器检测到的图像.
+
+#### Preview Class
+实现`android.view.SurfaceHolder.Callback` 接口—— 接收相机硬件的图片数据到app上.
+
+    class Preview extends ViewGroup implements SurfaceHolder.Callback {
+        
+        SurfaceView mSurfaceView;
+        SufaceHolder mHolder;
+
+        Preview(Context context) {
+            super(context);
+            
+            mSurfaceView = new SurfaceView(context);
+            addView(mSurfaceView);
+
+            mHolder = mSurfaceView.getHolder();
+            mHolder.addCallback(this);
+            mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+        }
+    }
+
+#### Set and Start the Preview
+Camera实例和其相关的界面展示必须有确切的创建时序，先创建Camera实例.
+
+在下面的代码段中，初始化相机的过程被封装. 任何时间用户做了一些改变相机状态(`setCamera()`)的操作，`Camera.startPreview()`都会被调用. 预览也应该在`surfaceChanged()`中重启.
+
+    public void setCamera(Camera camera) {
+        if (mCamera == camera) { return; }
+
+        stopPreviewAndFreeCamera();
+
+        mCamera = camera;
+
+        if (mCamera != null) {
+            mCamera.setPreviewDisplay(mHolder);    
+        } catch (IOException e) {
+            e.printStackTrace();    
+        }
+
+        mCamera.startPreview();
+    }
+
+### Modify Camera Setting
+Camera Settings 更改相机拍摄照片的方式，从缩放级别到曝光补偿. 此示例仅更改预览大小.
+
+    public void surfaceChanged(SurfaceHolder holder, int format, int w, int h) {
+        Camera.Parameters parameters = mCamera.getParameters();
+        parameters.setPreviewSize(mPreviewSize.width, mPreviewSize.height);
+        requestLayout();
+        mCamera.setParameters(parameters);
+
+        mCamera.startPreview();
+    }
+
+### Set the Preview Orientation
+大多数相机应用将显示锁定为横向模式，因为这是相机传感器的自然方向. 此设置不会阻止你拍摄人像模式的照片，因为设备的方向记录在EXIF标头中.`setCameraDisplayOrientation()`允许你修改预览的显示方式，而不影响图像的记录方式. 但是在API 14以下，如果要改变方向，必须先停止预览，然后再更改方向，再重新启动.
+
+### Take a Picture
+调用`Camera.takePicture()`拍摄照片在preview已经开始的前提下. 你可以创建`Camera.PictureCallback`和`Camera.ShutterCallback`，并将他们传递给`Camera.takePicture()`.
+
+如果你想延迟拍照，你可以创建`Camera.PreviewCallback`，实现`onPreviewFrame()`. 对于捕捉到的镜头数据，你可以仅捕获所选的预览帧，或设置一个延迟操作来调用`takePicture()`.
+
+### Restart the Preview
+    @Override
+    public void onClick(View v) {
+        switch(mPreviewState) {
+            case K_STATE_FROZEN:
+                mCamera.startPreview();
+                mPreviewState = K_STATE_PREVIEW;
+                break;
+
+            default:
+                mCamera.takePicture(null, rawCallback, null);
+                mPreviewState = K_STATE_BUSY;
+        }
+        shutterBtnConfig();
+    }
+
+### Stop the Preview and Release the Camera
+一旦你的app不再使用相机，就应该将其处理掉. 尤其需要释放掉`Camera`对象，否则将可能造成其他app的crash，当然包括你自己的app.
+
+你什么时候需要停止预览释放相机资源？当你的预览窗口被摧毁的时候.
+
+    public void surfaceDestroyed(SurfaceHolder holder) {
+        if (mCamera != null) {
+            mCamera.stopPreview();
+        }    
+    }
+
+    private void stopPreviewAndFreeCamera() {
+        if (mCamera != null) {
+            mCamera.stopPreview();
+            mCamera.release();
+
+            mCamera = null;
+        }    
+    }
+
 # Printing Content
 ## Photos
 ## HTML Documents
