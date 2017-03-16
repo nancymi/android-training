@@ -314,6 +314,98 @@ Camera Settings 更改相机拍摄照片的方式，从缩放级别到曝光补�
     }
 
 # Printing Content
+Android 4.4 以上提供了直接显示图片和文件的框架.
+
 ## Photos
+使用`PrintHelper`类来显示一张图片.
+
+> `PrintHelper`: 来自Android v4 support library
+
+### Print an Image
+`PrintHelper`提供一种简单的方式来显示图片. 该类只有一个显示设置:`setScaleMode()`，有如下两种选择：
+
+* SCALE_MODE_FIT: 按照图片的大小平铺在界面上
+* SCALE_MODE_FILL: 默认值. 按照屏幕大小平铺整个图片. 
+
+以下代码示例怎样显示图片的全过程.
+
+    private void doPhotoPrint() {
+        PrintHelper photoPrinter = new PrintHelper(getActivity());
+        photoPrinter.setScaleMode(PrintHelper.SCALE_MODE_FIT);
+        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.droids);
+        photoPrint.printBitmap("droids.jpg - test print", bitmap);
+    }
+
 ## HTML Documents
+在Android 4.4以上，`WebView`类做了更新，支持显示HTML内容. 该类允许你加载本地HTML或者从web端下载一个页面并显示.
+
+### Load an HTML Document
+创建本地输出视图的主要步骤如下：
+
+1. 在HTML资源家在以后创建一个`WebViewClient`对象
+2. 使用`WebView`对象加载HTML资源
+
+示例.
+
+    private WebView mWebView;
+
+    private void doWebViewPrint() {
+        WebView webView = new WebView(getActivity());
+        webView.setWebViewContent(new WebViewClient() {
+            public boolean shouldOverrideUriLoading(Webview webView, String url) {
+                return false;    
+            }    
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                Log.i(TAG, "page finished loading " + url);
+                createWebPrintJob(view);
+                mWebView = null;
+            }
+        });
+
+        String htmlDocument = "<html><body><h1>Test Content</h1><p>Testing, testing, testing ...</p></body></html>";
+        webView.loadDataWithBaseURL(null, htmlDocument, "text/HTML", "utf-8", null);
+        mWebView = webView;
+    }
+
+> **Note** 一定要确认你在`WebViewClient.onPageFinished()`方法被调用以后再做资源输出的工作.  
+> **Note** 以上的示例代码保存了对一个WebView对象实例的引用，所以在进行资源输出之前不会对其进行垃圾回收. 你需要确保在自己的实现中也要使用同样的思路来执行代码，否则打印过程可能会失败.
+
+如果要在页面中包含图形，请将图形文件放在项目的`assets/`目录中，并在`loadDataWithBaseURL()`方法的第一个参数中指定基本URL.
+
+    webView.loadDataWithBaseURL("file://android_asset/images", htmlBody,
+            "text/HTML", "utf-8", null);
+
+你也可以通过调用`loadUrl()`加载网页.
+
+    webView.loadUrl("http://developer.android.com/about/index.html");
+
+当使用`WebView`来创建输出文件时，有如下几条注意事项：
+
+* 不能添加头惑尾，包括页码等.
+* HTML 文档的打印选项不包括打印页面范围的功能，例如：不支持打印10页HTML文档的第2页到第4页
+* 一个`WebView`一次只能支持一个输出工作
+* 不支持包含CSS打印属性的HTML文档
+* 不能在HTML中使用 JavaScript 
+
+> **Note** 包含在布局中的WebView对象的内容也可以在加载文档后打印.
+
+### Create a Print Job
+做完以上事情以后，终于要做最后一步工作了：访问`PrintManager`，创建打印适配器，最后创建打印作业.
+
+    private void createWebPrintJob(WebView webView) {
+        PrintManager printManager = (PrintManager) getActivity()
+                .getSystemService(Context.PRINT_SERVICE);
+
+                PrintDocumentAdapter printAdapter = webView.createPrintDocumentAdapter();
+
+                String jobName = getString(R.string.app_name) + "Document";
+                PrintJob printJob = printManager.print(jobName, printAdapter,
+                        new PrintAttributes.Builder().build());
+
+                mPrintJobs.add(printJob);
+    }   
+
 ## Custom Documents
+
