@@ -408,4 +408,144 @@ Android 4.4 以上提供了直接显示图片和文件的框架.
     }   
 
 ## Custom Documents
+### Connect to the Print Manager
+当应用程序直接管理打印过程时，从用户收到打印请求后的第一步是连接到Android打印框架并获取PrintManager类的实例. 以下代码示例显示如何获取打印管理器并开始打印过程.
 
+    private void doPrint() {
+        PrintManager printManager = (PrintManager) getActivity().getSystemService(Context.PRINT_SERVICE);
+        String jobName = getActivity().getString(R.string.app_name) + " Document";
+        printManager.print(jobName, new MyPrintDocumentAdapter(getActivity(), null));
+    }
+
+> **Note** `print()` 最后一个参数需要是`PrintAttribute`对象. 你可以使用此参数向打印框架提供提示，并根据先前的打印周期提供预设选项，从而改善用户体验. 你还可以使用此参数设置更适合正在打印的内容的选项，例如在打印处于该方向的照片时将方向设置为横向.
+
+### Create a Print Adapter
+输出适配器与Android输出框架交互，处理输出流程. 该过程需要用户选择打印机和打印选项. 在打印过程中，用户可以选择取消打印行为，所以你的打印适配器需要监听和处理取消请求。
+
+`PrintDocumentAdapter` 抽象类有4个主要的回调函数，被用来设计处理打印生命周期.
+* `onStart()`: 一次调用. 如果你的应用有任何一次性的准备工作，都可以写在这里. 不是必须实现的方法.
+* `onLayout()`: 任何时间用户的行为影响了输出都会被调用. 
+* `onWrite()`: 调用将打印的页面转换为要打印的文件. 在每次`onLayout()`被调用后都必须必须被调用至少一次.
+* `onFinish()`: 在打印任务结束时被调用一次.
+
+> **Note** 这些适配器的方法在主线程中被调用. 如果你期望在执行这些方法时消耗大量的时间，需要在非UI线程执行实现函数.
+
+#### Compute print document info
+在实现`PrintDocumentAdapter`的过程中，app必须能够在打印作业中确认文件类型以及需要打印的页数，和打印页面的大小. 实现`onLayout()`，计算打印作业相关信息，将期望参数通过`PrintDocumentInfo`类传输.
+
+    @Override
+    public void onLayout(PrintAttributes oldAttributes,
+                        PrintAttributes newAttributes,
+                        CancellationSignal cancellationSignal,
+                        Bundle metadata) {
+        mPdfDocument = new PrintedPdfDocument(getActivity(), newAttributes);
+        if (cancellationSignal.isCancelled()) {
+            callback.onLayoutCancelled();
+            return;
+        }
+
+        int pages = computPageCount(newAttributes);
+        if (pages > 0) {
+            PrintDocumentInfo info = new PrintDocumentInfo()
+                        .Builder("print_output.pdf")
+                        .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
+                        .setPageCount(pages)
+                        .build();
+            callback.onLayoutFinished(info, true);
+        } else {
+            callback.onLayoutFailed("Page count calculation failed.");
+        }
+    }
+
+执行`onLayout()`方法会有三种可能的执行结果：完成、取消或者失败. 你必须通过实现`PrintDocumentAdapter.LayoutResultCallback` 来处理执行结果.
+
+> **Note** `onLayoutFinished()` 方法的布尔参数指示自上次请求以来布局内容是否实际已更改. 正确设置此参数允许打印框架避免不必要地调用`onWrite()`方法，缓存先前写入的打印文档并提高性能.
+
+以下的代码示例展示如何根据打印方向计算页面页数：
+
+    private int computePageCount(PrintAttributes printAttributes) {
+        int itemsPerPage = 4;
+
+        MediaSize pageSize = printAttributes.getMediaSize();
+        if (!pageSize.isPortrait()) {
+            itemsPerPage = 6;    
+        }
+
+        int printItemCount = getPrintItemCount();
+
+        return (int) Math.ceil(printItemCount / itemsPerPage);
+    }
+
+#### Write a print document file
+`PrintDocumentAdapter.onWrite()` 在要进行打印作业时调用. 
+`onWrite(PageRange[] pageRanges, ParcelFileDescriptor destination, CancellationSignal cancellationSignal, WriteResultCallback callback)`
+
+当打印任务完成时，需要调用`callback.onWriteFinished()`.
+
+> **Note** 每次`onLayout()`被调用以后，`onWrite()`都会被调用至少一次. 因此如果输出内容没有改变的话，需要设置`onLayoutFinished()`为`false`，以避免不必要地重新打印.
+
+> **Note** `onLayoutFinished()`的boolean型参数指示输出内容在上次调用时有没有改变.
+
+    @Override
+    public void onWrite(final PageRange[] pageRanges,
+                        final ParcelFileDescriptor destination,
+                        final CancellationSignal cancellationSignal,
+                        final WriteResultCallback callback) {
+        for (int i = 0; i < totalPages; i ++) {
+            if (containsPage(pageRanges, i)) {
+                writtenPagesArray.append(writtenPagesArray.size(), i);
+                PdfDocument.Page page = mPdfDocument.startPage(i);
+
+                if (cancellationSignal.isCancelled()) {
+                    callback.onWriteCancelled();
+                    mPdfDocument.close();
+                    mPdfDocument = null;
+                    return;
+                }
+
+                drawPage(page);
+
+                mPdfDocument.finishPage(page);
+            }    
+        }
+
+        try {
+            mPdfDocument.writeTo(new FileOutputStream(
+                    destination.getFileDescriptor()));
+        } catch (IOException e) {
+            callback.onWriteFailed(e.toString());
+            return;
+        } finally {
+            mPdfDocument.close();
+            mPdfDocument = null;
+        }
+
+        PageRange[] writtenPages = computeWrittenPages();
+        callback.onWriteFinished(writtenPages);
+        ...
+    }
+
+`PrintDocumentAdapter.WriteResultCallback` 监听`onWrite()` 结果.
+
+### Drawing PDF Page Content
+你的app在打印时必须生成一个PDF文件，并将其传输给Android打印框架. 你可以使用`PrintedPdfDocument`来收入能够承认那个PDF文件.
+
+`PrintedPdfDocument`使用`Canvas`绘出PDF页面.
+
+    private void drawPage(PdfDocument.Page page) {
+        Canvas canvas = page.getCanvas();
+
+        int titleBaseLine = 72;
+        int leftMargin = 54;
+
+        Paint paint = new Paint();
+        paint.setColor(Color.BLACK);
+        paint.setTextSize(36);
+        canvas.drawText("Test Title", leftMargin, titleBaseLine, paint);
+
+        paint.setTextSize(11);
+        canvas.drawText("Test paragragh", leftMargin, titleBaseLine + 25, paint);
+
+        paint.setColor(Color.BLUE);
+        canvas.drawRect(100, 100, 172, 172, paint);
+    }
